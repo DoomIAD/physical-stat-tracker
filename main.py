@@ -60,8 +60,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stack.addWidget(self.debug_widget)
 
         self.stack.setCurrentIndex(0)
-
-        #=========================== Functions ===========================#
+        #=========================== Basic Functions ===========================#
 
         # Continue button logic
         self.welcome_ui.continue_button.clicked.connect(self.next_screen)
@@ -79,7 +78,48 @@ class MainWindow(QtWidgets.QMainWindow):
             self.name_ui.name_title
         ])
 
+    def save_data(self):
+        name = self.name_ui.name_TextEdit.toPlainText()
+        birthdate = self.birthdate_ui.birthdate_dateEdit.date()
+        height_feet = self.height_ui.ft_textEdit.toPlainText()
+        height_inches = self.height_ui.in_textEdit.toPlainText()
+        weight = self.weight_ui.weight_textEdit.toPlainText()
+
+        print(f"Name: {name}")
+        print(f"Birthdate: {birthdate.toString()}")
+        print(f"Height: {height_feet} ft {height_inches} in")
+        print(f"Weight: {weight} lbs")
+
+    def data_checking(self):
+        current_index = self.stack.currentIndex()
+        # Name Screen
+        if current_index == 1:
+            name = self.name_ui.name_TextEdit.toPlainText()
+            if not name.strip():
+                QtWidgets.QMessageBox.warning(self, "Input Error", "Please enter your name.")
+                return False
+        # Birthdate screen
+        elif current_index == 2:
+            birthdate = self.birthdate_ui.birthdate_dateEdit.date()
+        # Height screen
+        elif current_index == 3: 
+            ft = self.height_ui.ft_textEdit.toPlainText()
+            in_ = self.height_ui.in_textEdit.toPlainText()
+            if not ft.isdigit() or not in_.isdigit():
+                QtWidgets.QMessageBox.warning(self, "Input Error", "Please enter valid numbers for height.")
+                return False
+        # Weight screen
+        elif current_index == 4: 
+            weight = self.weight_ui.weight_textEdit.toPlainText()
+            if not weight.isdigit():
+                QtWidgets.QMessageBox.warning(self, "Input Error", "Please enter a valid number for weight.")
+                return False
+            self.save_data()
+        return True
+
     def next_screen(self):
+        if not self.data_checking():
+            return
         current_index = self.stack.currentIndex()
         if current_index < self.stack.count() - 1:
             self.stack.setCurrentIndex(current_index + 1)
