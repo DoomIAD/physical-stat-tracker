@@ -1,3 +1,9 @@
+# Startup Basics 
+#---------------------------
+# source .venv/bin/activate
+# pyside6-designer
+#=================================================
+
 from PySide6 import QtWidgets
 from PySide6.QtGui import QFont
 import sys
@@ -7,7 +13,7 @@ from widgets.setup.name_widget import Ui_name_widget
 from widgets.setup.birthdate_widget import Ui_birthdate_widget
 from widgets.setup.height_widget import Ui_height_widget
 from widgets.setup.weight_widget import Ui_weight_widget
-from widgets.main.debug_widget import Ui_debug_widget
+from widgets.main.home_widget import Ui_debug_widget
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
