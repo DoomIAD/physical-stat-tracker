@@ -19,7 +19,8 @@ from PySide6.QtWidgets import (QApplication, QGridLayout, QHBoxLayout, QLabel,
     QLayout, QPushButton, QSizePolicy, QVBoxLayout,
     QWidget)
 
-from PySide6.QtCharts import QChartView as lineChartWidget
+from widgets.main.weight_chart import WeightChartWidget
+from widgets.main.activity_chart import ActivityChartWidget
 
 class Ui_debug_widget(object):
     def setupUi(self, debug_widget):
@@ -73,8 +74,10 @@ class Ui_debug_widget(object):
         self.graph_Layout = QHBoxLayout()
         self.graph_Layout.setSpacing(5)
         self.graph_Layout.setObjectName(u"graph_Layout")
-        self.weightchart_widget = lineChartWidget(debug_widget)
+        
+        self.weightchart_widget = WeightChartWidget(debug_widget)
         self.weightchart_widget.setObjectName(u"weightchart_widget")
+
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         sizePolicy1.setHorizontalStretch(0)
         sizePolicy1.setVerticalStretch(0)
@@ -134,7 +137,7 @@ class Ui_debug_widget(object):
 
         self.verticalLayout.addLayout(self.stats_Layout)
 
-        self.activity_widget = QWidget(debug_widget)
+        self.activity_widget = ActivityChartWidget(debug_widget)
         self.activity_widget.setObjectName(u"activity_widget")
 
         self.verticalLayout.addWidget(self.activity_widget)

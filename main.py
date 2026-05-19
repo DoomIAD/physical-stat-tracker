@@ -156,10 +156,10 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def update_label(self):
         self.debug_ui.title_label.setText(f"Hey There {self.name_ui.name_TextEdit.toPlainText()}")
-        self.debug_ui.bmi_label.setText(f"BMI: {self.calculate_bmi()}")
-        self.debug_ui.fat_label.setText(f"Body Fat %: {self.calculate_body_fat()}")
-        self.debug_ui.percentile_label.setText(f"Percentile: {self.calculate_percentile()}")
-        self.debug_ui.workout_label.setText(f"Today's Workout: {self.get_todays_workout()}")
+        self.debug_ui.bmi_label.setText(f"{self.calculate_bmi()} BMI")
+        self.debug_ui.fat_label.setText(f"{self.calculate_body_fat()}% Body Fat")
+        self.debug_ui.percentile_label.setText(f"{self.calculate_percentile()}th Percentile")
+        self.debug_ui.workout_label.setText(f"{self.get_todays_workout()}")
     
     def calculate_bmi(self):
         height_ft = int(self.height_ui.ft_textEdit.toPlainText())
@@ -172,15 +172,15 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def calculate_body_fat(self):
         # Placeholder for body fat calculation
-        return "N/A"
+        return "17"
 
     def calculate_percentile(self):
         # Placeholder for percentile calculation
-        return "N/A"
+        return "99"
 
     def get_todays_workout(self):
         # Placeholder for today's workout
-        return "N/A"
+        return "Chest and Shoulders"
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
