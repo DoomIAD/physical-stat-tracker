@@ -31,7 +31,7 @@ class Ui_debug_widget(object):
     def setupUi(self, debug_widget):
         if not debug_widget.objectName():
             debug_widget.setObjectName(u"debug_widget")
-        debug_widget.resize(696, 177)
+        debug_widget.resize(696, 350)
         self.gridLayout = QGridLayout(debug_widget)
         self.gridLayout.setObjectName(u"gridLayout")
         self.centerLayout = QVBoxLayout()
@@ -148,9 +148,9 @@ class Ui_debug_widget(object):
         self.verticalLayout.addWidget(self.activity_widget)
 
         self.verticalLayout.setStretch(0, 1)
-        self.verticalLayout.setStretch(1, 6)
+        self.verticalLayout.setStretch(1, 10)
         self.verticalLayout.setStretch(2, 2)
-        self.verticalLayout.setStretch(3, 4)
+        self.verticalLayout.setStretch(3, 3)
 
         self.centerLayout.addLayout(self.verticalLayout)
 
@@ -164,21 +164,28 @@ class Ui_debug_widget(object):
         QMetaObject.connectSlotsByName(debug_widget)
 
         self.debug_widget = debug_widget
-        self.debug_widget.showEvent = self.on_show_event
 
+        # Save original QWidget showEvent
+        self.original_show_event = debug_widget.showEvent
+        self.debug_widget = debug_widget
+        self.debug_widget.showEvent = self.on_show_event
+    
+    # Overide to run update_label() every time widget is shown
     def on_show_event(self, event):
         self.update_label()
-        super().showEvent(event)  # Ensure base class behavior is preserved
+        self.original_show_event(event)
 
+    # Function to update all labels with user data from database
     def update_label(self):
         # Get user data
         print("Updating labels with user data...")
-        global name
-        name = get_all_user_names()[0]
+        users = get_all_user_names()
+        if not users:
+            return
+        name = users[0]
         user_data = get_user_by_name(name)
 
-        # Extract user data
-        global height_ft, height_in, birthdate, gender, neck_circumference, waist_circumference
+        # Extract user data into usable variables
         height_ft = user_data[1] 
         height_in = user_data[2]
         birthdate = user_data[3]   
@@ -188,40 +195,51 @@ class Ui_debug_widget(object):
         current_weight = get_current_weight(name)
         weight_history= get_weight_history(name)
 
+        # Updates name label with user's name
         def update_name():
             self.title_label.setText(f"Hey There {name}")
 
+        # Updates BMI label with calculated BMI from user data
         def update_bmi():
             bmi = self.calculate_bmi(current_weight, height_ft, height_in)
             self.bmi_label.setText(f"{bmi:.1f} BMI")
 
+        # Updates body fat label with calculated body fat percentage from user data
+        # Requires neck and waist circumference to be filled out
         def update_body_fat():
             if neck_circumference is not None and waist_circumference is not None:
                 body_fat = self.calculate_body_fat(gender, neck_circumference, waist_circumference)
                 self.fat_label.setText(f"{body_fat:.1f}% Body Fat")
             else:
-                self.fat_label.setText("loading...")
+                self.fat_label.setText("Missing data for body fat calculation")
 
+        # Need to find API or table to find fitness percentiles
         def update_fitness_percentile():
-            # Placeholder for fitness percentile calculation
-            self.percentile_label.setText("loading....")
+            # hardcoded in the meantime
+            self.percentile_label.setText("No Information for Fitness Percentile")
 
+        # Updates today's workout label with workout plan from database that matches current day of the week, if it exists
         def update_workout():
-            today = date.today()
+            today = date.today().strftime("%A")
             workout_plan = self.get_todays_workout(today)
+
             if workout_plan is not None:
-                self.workout_label.setText(f"Today's Workout: {workout_plan}")
+                self.workout_label.setText(workout_plan)
             else:
-                self.workout_label.setText(f"Today's Workout: No workout planned")
+                self.workout_label.setText("No workout planned")
         
+        # Calls all update functions to update labels with user data from database
         update_name()
         update_bmi()
         update_body_fat()
         update_fitness_percentile()
         update_workout()
+
+        # Function are defined within their own scope
         self.update_weight_graph(name)
         self.update_activity_graph()
 
+    # Creates a line graph of user's weight history using data from database
     def update_weight_graph(self, name):
         weight_history = get_weight_history(name)
 
@@ -234,10 +252,10 @@ class Ui_debug_widget(object):
         weights = []
 
         for index, (date, weight) in enumerate(weight_history):
-            series.append(index, float(weight))
-            weights.append(float(weight))
+            weight = float(weight)
+            series.append(index, weight)
+            weights.append(weight)
 
-        chart = self.weightchart_widget.chart
         axis_x = self.weightchart_widget.axis_x
         axis_y = self.weightchart_widget.axis_y
 
@@ -245,19 +263,22 @@ class Ui_debug_widget(object):
 
         min_weight = min(weights)
         max_weight = max(weights)
-        padding = 5
+        padding = 2
 
         axis_y.setRange(min_weight - padding, max_weight + padding)
-        
+    
+    # Creates a GitHub like activity graph to show amount of time user spent exercising each day
     def update_activity_graph(self):
         # Need to update to match self.activity_widget to match activity history data
         pass
-
+    
+    # BMI calculation
     def calculate_bmi(self, weight_lbs, height_ft, height_in):
         total_height_in = (height_ft * 12) + height_in
         bmi = (weight_lbs / (total_height_in ** 2)) * 703
         return round(bmi, 2)
 
+    # Body fat calculation using U.S. Navy Method, requires neck and waist circumference
     def calculate_body_fat(self, gender, neck, waist):
         if gender is None or neck is None or waist is None:
             return {"Missing data for body fat calculation"}
@@ -268,17 +289,21 @@ class Ui_debug_widget(object):
                 body_fat = 163.205 * math.log10(waist - neck) - 97.684 * math.log10(64) - 78.387
             return round(body_fat, 2)
 
+    # Finds the workout plan for the current day of the week
     def get_todays_workout(self, today):
         if today is None:
             return "loading..."
-        else:
-            # Fetch all workout_week entries
-            workout_week_data = get_all_workout_week()
-            for entry in workout_week_data:
-                # Assuming entry[1] is the date and entry[2] is the workout plan name
-                if entry[1] == today:
-                    return entry[2]
-            return None
+
+        workout_week_data = get_all_workout_week()
+
+        for entry in workout_week_data:
+            day_of_week = entry[1]
+            workout_plan = entry[2]
+
+            if day_of_week == today:
+                return workout_plan
+
+        return None
 
     def retranslateUi(self, debug_widget):
         debug_widget.setWindowTitle(QCoreApplication.translate("debug_widget", u"Stat Tracker", None))

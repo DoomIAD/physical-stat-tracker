@@ -1,6 +1,7 @@
 from datetime import datetime
 from PySide6 import QtWidgets
 from PySide6.QtGui import QFont
+from PySide6.QtCore import QSettings
 import sys
 import math
 from datetime import date
@@ -65,7 +66,24 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stack.addWidget(self.weight_widget)
         self.stack.addWidget(self.debug_widget)
 
-        self.stack.setCurrentIndex(0)
+        # Ensure DB/tables exist
+        create_database()
+
+        # Persistent app settings
+        self.settings = QSettings("physical-stat-tracker", "physical-stat-tracker")
+
+        # Check if setup was completed previously
+        setup_complete = self.settings.value("setup_complete", False, type=bool)
+
+        # Check if a user actually exists in DB
+        has_user = len(get_all_user_names()) > 0
+
+        # Decide which screen to open
+        if setup_complete and has_user:
+            self.stack.setCurrentWidget(self.debug_widget)
+        else:
+            self.settings.setValue("setup_complete", False)
+            self.stack.setCurrentWidget(self.welcome_widget)
         #=========================== Basic Functions ===========================#
 
         # Continue button logic
@@ -73,7 +91,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.name_ui.continue_button.clicked.connect(self.next_screen)
         self.birthdate_ui.continue_button.clicked.connect(self.next_screen)
         self.height_ui.continue_button.clicked.connect(self.next_screen)
-        self.weight_ui.continue_button.clicked.connect(self.next_screen)
+        self.weight_ui.continue_button.clicked.connect(self.finish_setup)
 
         # Widget text scaling
         self.update_fonts([
@@ -84,57 +102,55 @@ class MainWindow(QtWidgets.QMainWindow):
             self.name_ui.name_title
         ])
 
+    # Uploads setup data to database after all screens done
     def save_data(self):
+        # Checks each screen for updated values
         name = self.name_ui.name_TextEdit.toPlainText()
         birthdate = self.birthdate_ui.birthdate_dateEdit.date()
         height_feet = self.height_ui.ft_textEdit.toPlainText()
         height_inches = self.height_ui.in_textEdit.toPlainText()
         weight = self.weight_ui.weight_textEdit.toPlainText()
 
-        print(f"Name: {name}")
-        print(f"Birthdate: {birthdate.toString()}")
-        print(f"Height: {height_feet} ft {height_inches} in")
-        print(f"Weight: {weight} lbs")
-
+        # Saves data to database if all fields are filled out
         if name and birthdate and height_feet and height_inches and weight:
             insert_user(name, int(height_feet), float(height_inches), birthdate.toString("yyyy-MM-dd"))
-            insert_weight(name, float(weight), datetime.now().strftime("%Y-%m-%d"))
+            try:
+                weight_value = float(weight)
+                insert_weight(name, weight_value, datetime.now().strftime("%Y-%m-%d"))
+            except Exception as e:
+                print(f"Invalid weight insert: {e}")
 
+    # Ensures values are usable before allowing user to continue to next screen
     def data_checking(self):
         current_index = self.stack.currentIndex()
-        if current_index == 0:
-            wipe_database()  # Clear database when starting setup
-        # Name Screen
+
         if current_index == 1:
             name = self.name_ui.name_TextEdit.toPlainText()
             if not name.strip():
                 QtWidgets.QMessageBox.warning(self, "Input Error", "Please enter your name.")
                 return False
-        # Birthdate screen
-        elif current_index == 2:
-            birthdate = self.birthdate_ui.birthdate_dateEdit.date()
-        # Height screen
+
         elif current_index == 3:
             ft = self.height_ui.ft_textEdit.toPlainText()
             in_ = self.height_ui.in_textEdit.toPlainText()
             if not ft.isdigit() or not in_.isdigit():
                 QtWidgets.QMessageBox.warning(self, "Input Error", "Please enter valid numbers for height.")
                 return False
-        # Weight screen
+
         elif current_index == 4:
             weight = self.weight_ui.weight_textEdit.toPlainText()
-            create_database()
-            if not weight.isdigit():
+            if not weight.replace(".", "", 1).isdigit():
                 QtWidgets.QMessageBox.warning(self, "Input Error", "Please enter a valid number for weight.")
                 return False
-        self.save_data()
         return True
 
+    # Moves to next screen of stack after data_checking()
     def next_screen(self):
         if not self.data_checking():
             return
         self.stack.setCurrentIndex(self.stack.currentIndex() + 1)
 
+    # Resizes fonts of all screens when window is resized
     def resizeEvent(self, event):
         self.update_fonts([
             self.welcome_ui.welcome_title,
@@ -144,13 +160,22 @@ class MainWindow(QtWidgets.QMainWindow):
             self.name_ui.name_title
         ])
         super().resizeEvent(event)
-
-    def update_fonts(self, labels, base_size=24, min_size=24):
-        # Update font sizes based on window size
+    # Font specific function for resize
+    def update_fonts(self, labels):
         font_size = int(self.width() / 20)
         for widget in labels:
             widget.setFont(QFont("Arial", font_size))
+    
+    def finish_setup(self):
+        if not self.data_checking():
+            return
 
+        create_database()
+        self.save_data()
+        self.settings.setValue("setup_complete", True)
+        self.stack.setCurrentWidget(self.debug_widget)
+
+# Main function to run app
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()

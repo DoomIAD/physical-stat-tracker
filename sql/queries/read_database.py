@@ -126,20 +126,18 @@ def get_user_by_name(name):
 def get_workout_plan_by_name(plan_name):
     """
     Retrieves a workout plan by its name.
-    :param plan_name: Name of the workout plan (must be in the 'workout_plans' table).
-    :return: Workout plan record or None if not found.
     """
     try:
-        with sqlite3.connect('sql/my_database.db') as conn:
+        with sqlite3.connect("sql/my_database.db") as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM workout_plans WHERE workout_plan = ?", (plan_name,))
-            result = cursor.fetchone()
-            return result
+            cursor.execute(
+                "SELECT * FROM workout_plans WHERE workout_plan = ?",
+                (plan_name,)
+            )
+            return cursor.fetchone()
+
     except sqlite3.Error as e:
         print(f"Database error getting workout plan by name: {e}")
-        return None
-    except Exception as e:
-        print(f"Unexpected error getting workout plan by name: {e}")
         return None
     
 def get_workout_plan_details_by_plan_id(plan_id):
