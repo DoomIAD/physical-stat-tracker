@@ -10,11 +10,6 @@ class WeightChartWidget(QChartView):
         self.series = QLineSeries()
         self.series.setName("Weight")
 
-        self.series.append(0, 180)
-        self.series.append(1, 178)
-        self.series.append(2, 176)
-        self.series.append(3, 177)
-
         self.chart = QChart()
         self.chart.addSeries(self.series)
         self.chart.setTitle("Weight")
@@ -22,19 +17,20 @@ class WeightChartWidget(QChartView):
         self.chart.setBackgroundVisible(False)
         self.chart.setPlotAreaBackgroundVisible(False)
 
-        axis_x = QValueAxis()
-        axis_x.setTitleText("Week")
-        axis_x.setRange(0, 3)
+        self.axis_x = QValueAxis()
+        self.axis_x.setTitleText("Entry")
+        self.axis_x.setLabelFormat("%d")
+        self.axis_x.setRange(0, 1)
 
-        axis_y = QValueAxis()
-        axis_y.setTitleText("Weight")
-        axis_y.setRange(170, 185)
+        self.axis_y = QValueAxis()
+        self.axis_y.setTitleText("Weight")
+        self.axis_y.setRange(0, 1)
 
-        self.chart.addAxis(axis_x, Qt.AlignBottom)
-        self.chart.addAxis(axis_y, Qt.AlignLeft)
+        self.chart.addAxis(self.axis_x, Qt.AlignBottom)
+        self.chart.addAxis(self.axis_y, Qt.AlignLeft)
 
-        self.series.attachAxis(axis_x)
-        self.series.attachAxis(axis_y)
+        self.series.attachAxis(self.axis_x)
+        self.series.attachAxis(self.axis_y)
 
         self.setChart(self.chart)
         self.setRenderHint(QPainter.Antialiasing)

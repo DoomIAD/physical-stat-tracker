@@ -8,6 +8,11 @@
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
+from datetime import date
+import math
+
+from sql.queries.read_database import *
+
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
     QMetaObject, QObject, QPoint, QRect,
     QSize, QTime, QUrl, Qt)
@@ -157,7 +162,123 @@ class Ui_debug_widget(object):
         self.retranslateUi(debug_widget)
 
         QMetaObject.connectSlotsByName(debug_widget)
-    # setupUi
+
+        self.debug_widget = debug_widget
+        self.debug_widget.showEvent = self.on_show_event
+
+    def on_show_event(self, event):
+        self.update_label()
+        super().showEvent(event)  # Ensure base class behavior is preserved
+
+    def update_label(self):
+        # Get user data
+        print("Updating labels with user data...")
+        global name
+        name = get_all_user_names()[0]
+        user_data = get_user_by_name(name)
+
+        # Extract user data
+        global height_ft, height_in, birthdate, gender, neck_circumference, waist_circumference
+        height_ft = user_data[1] 
+        height_in = user_data[2]
+        birthdate = user_data[3]   
+        gender = user_data[4]
+        neck_circumference = user_data[5]
+        waist_circumference = user_data[6]
+        current_weight = get_current_weight(name)
+        weight_history= get_weight_history(name)
+
+        def update_name():
+            self.title_label.setText(f"Hey There {name}")
+
+        def update_bmi():
+            bmi = self.calculate_bmi(current_weight, height_ft, height_in)
+            self.bmi_label.setText(f"{bmi:.1f} BMI")
+
+        def update_body_fat():
+            if neck_circumference is not None and waist_circumference is not None:
+                body_fat = self.calculate_body_fat(gender, neck_circumference, waist_circumference)
+                self.fat_label.setText(f"{body_fat:.1f}% Body Fat")
+            else:
+                self.fat_label.setText("loading...")
+
+        def update_fitness_percentile():
+            # Placeholder for fitness percentile calculation
+            self.percentile_label.setText("loading....")
+
+        def update_workout():
+            today = date.today()
+            workout_plan = self.get_todays_workout(today)
+            if workout_plan is not None:
+                self.workout_label.setText(f"Today's Workout: {workout_plan}")
+            else:
+                self.workout_label.setText(f"Today's Workout: No workout planned")
+        
+        update_name()
+        update_bmi()
+        update_body_fat()
+        update_fitness_percentile()
+        update_workout()
+        self.update_weight_graph(name)
+        self.update_activity_graph()
+
+    def update_weight_graph(self, name):
+        weight_history = get_weight_history(name)
+
+        series = self.weightchart_widget.series
+        series.clear()
+
+        if not weight_history:
+            return
+
+        weights = []
+
+        for index, (date, weight) in enumerate(weight_history):
+            series.append(index, float(weight))
+            weights.append(float(weight))
+
+        chart = self.weightchart_widget.chart
+        axis_x = self.weightchart_widget.axis_x
+        axis_y = self.weightchart_widget.axis_y
+
+        axis_x.setRange(0, len(weight_history) - 1)
+
+        min_weight = min(weights)
+        max_weight = max(weights)
+        padding = 5
+
+        axis_y.setRange(min_weight - padding, max_weight + padding)
+        
+    def update_activity_graph(self):
+        # Need to update to match self.activity_widget to match activity history data
+        pass
+
+    def calculate_bmi(self, weight_lbs, height_ft, height_in):
+        total_height_in = (height_ft * 12) + height_in
+        bmi = (weight_lbs / (total_height_in ** 2)) * 703
+        return round(bmi, 2)
+
+    def calculate_body_fat(self, gender, neck, waist):
+        if gender is None or neck is None or waist is None:
+            return {"Missing data for body fat calculation"}
+        else:
+            if gender.lower() == 'male':
+                body_fat = 86.010 * math.log10(waist - neck) - 70.041 * math.log10(69) + 36.76
+            else:
+                body_fat = 163.205 * math.log10(waist - neck) - 97.684 * math.log10(64) - 78.387
+            return round(body_fat, 2)
+
+    def get_todays_workout(self, today):
+        if today is None:
+            return "loading..."
+        else:
+            # Fetch all workout_week entries
+            workout_week_data = get_all_workout_week()
+            for entry in workout_week_data:
+                # Assuming entry[1] is the date and entry[2] is the workout plan name
+                if entry[1] == today:
+                    return entry[2]
+            return None
 
     def retranslateUi(self, debug_widget):
         debug_widget.setWindowTitle(QCoreApplication.translate("debug_widget", u"Stat Tracker", None))
