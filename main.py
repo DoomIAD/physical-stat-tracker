@@ -1,3 +1,9 @@
+# Startup Basics 
+#---------------------------
+# source .venv/bin/activate
+# pyside6-designer
+#=================================================
+
 from PySide6 import QtWidgets
 from PySide6.QtGui import QFont
 import sys
@@ -7,7 +13,7 @@ from widgets.setup.name_widget import Ui_name_widget
 from widgets.setup.birthdate_widget import Ui_birthdate_widget
 from widgets.setup.height_widget import Ui_height_widget
 from widgets.setup.weight_widget import Ui_weight_widget
-from widgets.main.debug_widget import Ui_debug_widget
+from widgets.main.home_widget import Ui_debug_widget
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -122,7 +128,12 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         current_index = self.stack.currentIndex()
         if current_index < self.stack.count() - 1:
-            self.stack.setCurrentIndex(current_index + 1)
+            new_index = current_index + 1
+            self.stack.setCurrentIndex(new_index)
+
+            # Run when debug widget appears
+            if self.stack.widget(new_index) == self.debug_widget:
+                self.update_label()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -142,7 +153,34 @@ class MainWindow(QtWidgets.QMainWindow):
             font = label.font()
             font.setPointSize(size)
             label.setFont(font)
+    
+    def update_label(self):
+        self.debug_ui.title_label.setText(f"Hey There {self.name_ui.name_TextEdit.toPlainText()}")
+        self.debug_ui.bmi_label.setText(f"{self.calculate_bmi()} BMI")
+        self.debug_ui.fat_label.setText(f"{self.calculate_body_fat()}% Body Fat")
+        self.debug_ui.percentile_label.setText(f"{self.calculate_percentile()}th Percentile")
+        self.debug_ui.workout_label.setText(f"{self.get_todays_workout()}")
+    
+    def calculate_bmi(self):
+        height_ft = int(self.height_ui.ft_textEdit.toPlainText())
+        height_in = int(self.height_ui.in_textEdit.toPlainText())
+        weight_lb = int(self.weight_ui.weight_textEdit.toPlainText())
 
+        total_height_in = height_ft * 12 + height_in
+        bmi = (weight_lb / (total_height_in ** 2)) * 703
+        return round(bmi, 2)
+    
+    def calculate_body_fat(self):
+        # Placeholder for body fat calculation
+        return "17"
+
+    def calculate_percentile(self):
+        # Placeholder for percentile calculation
+        return "99"
+
+    def get_todays_workout(self):
+        # Placeholder for today's workout
+        return "Chest and Shoulders"
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
