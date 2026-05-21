@@ -1,12 +1,10 @@
-# Startup Basics 
-#---------------------------
-# source .venv/bin/activate
-# pyside6-designer
-#=================================================
-
+from datetime import datetime
 from PySide6 import QtWidgets
 from PySide6.QtGui import QFont
+from PySide6.QtCore import QSettings
 import sys
+import math
+from datetime import date
 
 from widgets.setup.welcome_widget import Ui_welcome_screen
 from widgets.setup.name_widget import Ui_name_widget
@@ -15,10 +13,14 @@ from widgets.setup.height_widget import Ui_height_widget
 from widgets.setup.weight_widget import Ui_weight_widget
 from widgets.main.home_widget import Ui_debug_widget
 
+from sql.queries.create_database import *
+from sql.queries.insert_database import *
+from sql.queries.read_database import *
+from sql.queries.edit_database import *
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-
         self.setMinimumSize(400, 300)
 
         # Stack
@@ -26,7 +28,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.stack)
 
         #=========================== Screens ===========================#
-
         # Welcome screen
         self.welcome_widget = QtWidgets.QWidget()
         self.welcome_ui = Ui_welcome_screen()
@@ -65,7 +66,24 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stack.addWidget(self.weight_widget)
         self.stack.addWidget(self.debug_widget)
 
-        self.stack.setCurrentIndex(0)
+        # Ensure DB/tables exist
+        create_database()
+
+        # Persistent app settings
+        self.settings = QSettings("physical-stat-tracker", "physical-stat-tracker")
+
+        # Check if setup was completed previously
+        setup_complete = self.settings.value("setup_complete", False, type=bool)
+
+        # Check if a user actually exists in DB
+        has_user = len(get_all_user_names()) > 0
+
+        # Decide which screen to open
+        if setup_complete and has_user:
+            self.stack.setCurrentWidget(self.debug_widget)
+        else:
+            self.settings.setValue("setup_complete", False)
+            self.stack.setCurrentWidget(self.welcome_widget)
         #=========================== Basic Functions ===========================#
 
         # Continue button logic
@@ -73,7 +91,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.name_ui.continue_button.clicked.connect(self.next_screen)
         self.birthdate_ui.continue_button.clicked.connect(self.next_screen)
         self.height_ui.continue_button.clicked.connect(self.next_screen)
-        self.weight_ui.continue_button.clicked.connect(self.next_screen)
+        self.weight_ui.continue_button.clicked.connect(self.finish_setup)
 
         # Widget text scaling
         self.update_fonts([
@@ -84,59 +102,56 @@ class MainWindow(QtWidgets.QMainWindow):
             self.name_ui.name_title
         ])
 
+    # Uploads setup data to database after all screens done
     def save_data(self):
+        # Checks each screen for updated values
         name = self.name_ui.name_TextEdit.toPlainText()
         birthdate = self.birthdate_ui.birthdate_dateEdit.date()
         height_feet = self.height_ui.ft_textEdit.toPlainText()
         height_inches = self.height_ui.in_textEdit.toPlainText()
         weight = self.weight_ui.weight_textEdit.toPlainText()
 
-        print(f"Name: {name}")
-        print(f"Birthdate: {birthdate.toString()}")
-        print(f"Height: {height_feet} ft {height_inches} in")
-        print(f"Weight: {weight} lbs")
+        # Saves data to database if all fields are filled out
+        if name and birthdate and height_feet and height_inches and weight:
+            insert_user(name, int(height_feet), float(height_inches), birthdate.toString("yyyy-MM-dd"))
+            try:
+                weight_value = float(weight)
+                insert_weight(name, weight_value, datetime.now().strftime("%Y-%m-%d"))
+            except Exception as e:
+                print(f"Invalid weight insert: {e}")
 
+    # Ensures values are usable before allowing user to continue to next screen
     def data_checking(self):
         current_index = self.stack.currentIndex()
-        # Name Screen
+
         if current_index == 1:
             name = self.name_ui.name_TextEdit.toPlainText()
             if not name.strip():
                 QtWidgets.QMessageBox.warning(self, "Input Error", "Please enter your name.")
                 return False
-        # Birthdate screen
-        elif current_index == 2:
-            birthdate = self.birthdate_ui.birthdate_dateEdit.date()
-        # Height screen
-        elif current_index == 3: 
+
+        elif current_index == 3:
             ft = self.height_ui.ft_textEdit.toPlainText()
             in_ = self.height_ui.in_textEdit.toPlainText()
             if not ft.isdigit() or not in_.isdigit():
                 QtWidgets.QMessageBox.warning(self, "Input Error", "Please enter valid numbers for height.")
                 return False
-        # Weight screen
-        elif current_index == 4: 
+
+        elif current_index == 4:
             weight = self.weight_ui.weight_textEdit.toPlainText()
-            if not weight.isdigit():
+            if not weight.replace(".", "", 1).isdigit():
                 QtWidgets.QMessageBox.warning(self, "Input Error", "Please enter a valid number for weight.")
                 return False
-            self.save_data()
         return True
 
+    # Moves to next screen of stack after data_checking()
     def next_screen(self):
         if not self.data_checking():
             return
-        current_index = self.stack.currentIndex()
-        if current_index < self.stack.count() - 1:
-            new_index = current_index + 1
-            self.stack.setCurrentIndex(new_index)
+        self.stack.setCurrentIndex(self.stack.currentIndex() + 1)
 
-            # Run when debug widget appears
-            if self.stack.widget(new_index) == self.debug_widget:
-                self.update_label()
-
+    # Resizes fonts of all screens when window is resized
     def resizeEvent(self, event):
-        super().resizeEvent(event)
         self.update_fonts([
             self.welcome_ui.welcome_title,
             self.weight_ui.weight_title,
@@ -144,44 +159,23 @@ class MainWindow(QtWidgets.QMainWindow):
             self.birthdate_ui.birthdate_title,
             self.name_ui.name_title
         ])
-
-    def update_fonts(self, labels, base_size=24, min_size=24):
-        scale = min(self.width() / 400, self.height() / 300)
-        size = max(min_size, int(base_size * scale))
-
-        for label in labels:
-            font = label.font()
-            font.setPointSize(size)
-            label.setFont(font)
+        super().resizeEvent(event)
+    # Font specific function for resize
+    def update_fonts(self, labels):
+        font_size = int(self.width() / 20)
+        for widget in labels:
+            widget.setFont(QFont("Arial", font_size))
     
-    def update_label(self):
-        self.debug_ui.title_label.setText(f"Hey There {self.name_ui.name_TextEdit.toPlainText()}")
-        self.debug_ui.bmi_label.setText(f"{self.calculate_bmi()} BMI")
-        self.debug_ui.fat_label.setText(f"{self.calculate_body_fat()}% Body Fat")
-        self.debug_ui.percentile_label.setText(f"{self.calculate_percentile()}th Percentile")
-        self.debug_ui.workout_label.setText(f"{self.get_todays_workout()}")
-    
-    def calculate_bmi(self):
-        height_ft = int(self.height_ui.ft_textEdit.toPlainText())
-        height_in = int(self.height_ui.in_textEdit.toPlainText())
-        weight_lb = int(self.weight_ui.weight_textEdit.toPlainText())
+    def finish_setup(self):
+        if not self.data_checking():
+            return
 
-        total_height_in = height_ft * 12 + height_in
-        bmi = (weight_lb / (total_height_in ** 2)) * 703
-        return round(bmi, 2)
-    
-    def calculate_body_fat(self):
-        # Placeholder for body fat calculation
-        return "17"
+        create_database()
+        self.save_data()
+        self.settings.setValue("setup_complete", True)
+        self.stack.setCurrentWidget(self.debug_widget)
 
-    def calculate_percentile(self):
-        # Placeholder for percentile calculation
-        return "99"
-
-    def get_todays_workout(self):
-        # Placeholder for today's workout
-        return "Chest and Shoulders"
-
+# Main function to run app
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
