@@ -237,7 +237,7 @@ class Ui_debug_widget(object):
 
         # Function are defined within their own scope
         self.update_weight_graph(name)
-        self.update_activity_graph()
+        self.update_activity_graph(name)
 
     # Creates a line graph of user's weight history using data from database
     def update_weight_graph(self, name):
@@ -268,9 +268,8 @@ class Ui_debug_widget(object):
         axis_y.setRange(min_weight - padding, max_weight + padding)
     
     # Creates a GitHub like activity graph to show amount of time user spent exercising each day
-    def update_activity_graph(self):
-        # Need to update to match self.activity_widget to match activity history data
-        pass
+    def update_activity_graph(self, name):
+        self.activity_widget.load_activity_data(name)
     
     # BMI calculation
     def calculate_bmi(self, weight_lbs, height_ft, height_in):
