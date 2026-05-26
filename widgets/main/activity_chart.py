@@ -22,10 +22,10 @@ class ActivityChartWidget(QWidget):
         }
 
     def load_activity_data(self, username):
+        self.activity_data = get_activity_history(username)
         if not self.activity_data:
             return
-        self.activity_data = get_activity_history(username)
-        self.update()  # triggers repaint
+        self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self)

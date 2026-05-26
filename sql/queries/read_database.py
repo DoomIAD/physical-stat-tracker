@@ -71,21 +71,55 @@ def get_all_workout_plan_details():
         print(f"Unexpected error getting all workout plan details: {e}")
         return []
 
-def get_all_workout_week():
+def get_all_workout_week(target_date=None):
     """
-    Retrieves all workout week entries from the 'workout_week' table.
-    :return: List of all workout week records.
+    Retrieves all workout plans mapped to dates based on a repeating cycle.
+    Each user's workout plans cycle through their workout_order indefinitely.
+    Cycle starts from January 1st of the current year.
+    
+    :param target_date: Date to get workout for (default: today)
+    :return: List of tuples (username, cycle_day, plan_name) for the current cycle.
     """
+    if target_date is None:
+        target_date = datetime.date.today()
+    
     try:
         with sqlite3.connect('sql/my_database.db') as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM workout_week")
-            return cursor.fetchall()
+            cursor.execute("""
+                SELECT username, plan_name, workout_order
+                FROM workout_plans
+                ORDER BY username, workout_order
+            """)
+            rows = cursor.fetchall()
+            
+            if not rows:
+                return []
+            
+            # Group plans by username and find cycle length
+            user_plans = {}
+            for username, plan_name, workout_order in rows:
+                if username not in user_plans:
+                    user_plans[username] = []
+                user_plans[username].append((plan_name, workout_order))
+            
+            # Calculate which day in cycle target_date is
+            cycle_start = datetime.date(target_date.year, 1, 1)
+            days_since_cycle_start = (target_date - cycle_start).days
+            
+            result = []
+            for username, plans in user_plans.items():
+                cycle_length = len(plans)
+                position_in_cycle = days_since_cycle_start % cycle_length
+                
+                # Return all plans in the cycle with their position
+                for plan_name, workout_order in plans:
+                    position = (workout_order - 1) % cycle_length
+                    result.append((username, position, plan_name))
+            
+            return result
     except sqlite3.Error as e:
         print(f"Database error getting all workout week entries: {e}")
-        return []
-    except Exception as e:
-        print(f"Unexpected error getting all workout week entries: {e}")
         return []
 
 def get_user_by_name(username):
@@ -124,30 +158,49 @@ def get_workout_plan_by_name(plan_name):
         print(f"Database error getting workout plan by username: {e}")
         return None
 
-def get_user_workout_plan_for_day(username, day_of_week):
+def get_user_workout_plan_for_day(username, target_date=None):
     """
-    Retrieves the workout plan for a specific user on a given day of the week.
-    This function joins the 'workout_week' and 'workout_plans' tables.
+    Retrieves the workout plan for a specific user on a given date.
+    Calculates position in the repeating cycle based on target_date.
+    Cycle starts from January 1st of the current year.
+    
     :param username: Username of the user.
-    :param day_of_week: Day of the week (e.g., 'Monday').
-    :return: List of workout plan details for the user and day.
+    :param target_date: Date to get workout for (default: today).
+    :return: Workout plan name or None if not found.
     """
+    if target_date is None:
+        target_date = datetime.date.today()
+    
     try:
         with sqlite3.connect('sql/my_database.db') as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT wp.workout_plan, wp.workouts
-                FROM workout_week ww
-                JOIN workout_plans wp ON ww.workout_plan = wp.workout_plan
-                WHERE ww.username = ? AND ww.day_of_week = ?
-            """, (username, day_of_week))
-            return cursor.fetchall()
+                SELECT plan_name, workout_order
+                FROM workout_plans
+                WHERE username = ?
+                ORDER BY workout_order
+            """, (username,))
+            rows = cursor.fetchall()
+            
+            if not rows:
+                return None
+            
+            cycle_length = len(rows)
+            cycle_start = datetime.date(target_date.year, 1, 1)
+            days_since_cycle_start = (target_date - cycle_start).days
+            position_in_cycle = days_since_cycle_start % cycle_length
+            
+            for plan_name, workout_order in rows:
+                if (workout_order - 1) % cycle_length == position_in_cycle:
+                    return plan_name
+            
+            return None
     except sqlite3.Error as e:
         print(f"Database error getting user's workout plan for day: {e}")
-        return []
+        return None
     except Exception as e:
         print(f"Unexpected error getting user's workout plan for day: {e}")
-        return []
+        return None
     
 # get current weight for user
 def get_current_weight(username):
@@ -241,13 +294,28 @@ def get_activity_history(username):
 
             day_index = 0
 
-            for week in range(7):
-                for day in range(6):
+            for col in range(6):
+                for row in range(7):
 
                     current_date = start_date + timedelta(days=day_index)
                     date_str = current_date.strftime("%Y-%m-%d")
 
-                    activity_data[week][day] = (activity_lookup.get(date_str, 0)//25)
+                    score = activity_lookup.get(date_str, 0)
+
+                    if score < 1:
+                        value = 0
+                    elif score < 25:
+                        value = 1
+                    else:
+                        value = score // 25
+
+                    activity_data[row][col] = value
+
+                    print(
+                        f"Date: {date_str}, "
+                        f"Score: {score}, "
+                        f"Grid Value: {value}"
+                    )
 
                     day_index += 1
 
