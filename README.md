@@ -1,41 +1,42 @@
 # 📊 Physical Stat Tracker
 
-A physical health and workout tracker. In progress...
+A physical health and workout tracker. 
+Still in the works
 
 ---
-# The Goal
-
 ## 🏋️ Features
 
-- Input and store basic physical stats:
+- Input basic information to get your demographic on first startup:
+  - Name (for an identifier)
   - Weight
   - Height
   - Age
-  - Name (for an identifier)
 
-- Track fitness goals:
-  - Weight loss or gain
-  - Workout progress
+- View your stats
+  - BMI
+  - Body Fat percentage
 
+- Visualize your history
+  - Line chart of weight
+  - Activity chart for amount of time spent working out
+
+## 📌 Features in Development
+
+- Add Additional specifics whenever
+  - Neck circumference
+  - Waist circumference
+  - Gender
+- Weight requested on each day's startup
+- Create and modify workouts and specific exercises
+- Notification of workout plans
+- Interactive timer for workouts
 - Compare against other users or people in your demographic
-
-- UI built with PySide
 
 ---
 
 ## 🛠️ Built With
 
 - Python 
-- PySide6 (Qt for Python)
-- SQL for data storage
-
----
-
-## 📌 Additional Plans
-
-- Save user data locally (JSON or SQLite)
-- Add progress graphs
-- Workout history tracking
-- Dark mode UI
-- Goal reminders & notifications
+- PySide6 (Qt for Python) for GUI
+- SQLite for data storage
 
