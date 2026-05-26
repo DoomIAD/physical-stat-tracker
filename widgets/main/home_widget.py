@@ -220,9 +220,8 @@ class Ui_debug_widget(object):
 
         # Updates today's workout label with workout plan from database that matches current day of the week, if it exists
         def update_workout():
-            today = date.today().strftime("%A")
-            workout_plan = self.get_todays_workout(today)
-
+            workout_plan = self.get_todays_workout(name)
+            
             if workout_plan is not None:
                 self.workout_label.setText(workout_plan)
             else:
@@ -237,7 +236,7 @@ class Ui_debug_widget(object):
 
         # Function are defined within their own scope
         self.update_weight_graph(name)
-        self.update_activity_graph()
+        self.update_activity_graph(name)
 
     # Creates a line graph of user's weight history using data from database
     def update_weight_graph(self, name):
@@ -268,9 +267,8 @@ class Ui_debug_widget(object):
         axis_y.setRange(min_weight - padding, max_weight + padding)
     
     # Creates a GitHub like activity graph to show amount of time user spent exercising each day
-    def update_activity_graph(self):
-        # Need to update to match self.activity_widget to match activity history data
-        pass
+    def update_activity_graph(self, name):
+        self.activity_widget.load_activity_data(name)
     
     # BMI calculation
     def calculate_bmi(self, weight_lbs, height_ft, height_in):
@@ -290,20 +288,9 @@ class Ui_debug_widget(object):
             return round(body_fat, 2)
 
     # Finds the workout plan for the current day of the week
-    def get_todays_workout(self, today):
-        if today is None:
-            return "loading..."
-
-        workout_week_data = get_all_workout_week()
-
-        for entry in workout_week_data:
-            day_of_week = entry[1]
-            workout_plan = entry[2]
-
-            if day_of_week == today:
-                return workout_plan
-
-        return None
+    def get_todays_workout(self, username):
+        from sql.queries.read_database import get_user_workout_plan_for_day
+        return get_user_workout_plan_for_day(username)
 
     def retranslateUi(self, debug_widget):
         debug_widget.setWindowTitle(QCoreApplication.translate("debug_widget", u"Stat Tracker", None))
