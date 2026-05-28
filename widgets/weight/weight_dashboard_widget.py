@@ -1,4 +1,5 @@
 # weight_dashboard.py
+import datetime
 import sys
 from PySide6.QtCore import Qt, QPointF
 from PySide6.QtGui import QPainter, QPen, QColor, QFont, QPainterPath
@@ -6,6 +7,8 @@ from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QFrame, QGridLayout, QLineEdit, QSizePolicy
 )
+
+from sql.queries.read_database import get_all_user_names, get_weight_history
 
 
 class Card(QFrame):
@@ -45,15 +48,68 @@ class Donut(QWidget):
 class WeightChart(QWidget):
     def __init__(self):
         super().__init__()
-        self.weights = [
-            186, 185, 184.2, 184.1, 183, 182.2, 181, 181.2,
-            181.5, 180.5, 178.5, 177.8, 175.5, 174.6, 172.8,
-            172.9, 171.2, 171.4, 170, 169.2, 169.3, 168.5, 169.1, 168.4
-        ]
+        self.weights = []
         self.goal = 150
         self.setMinimumHeight(340)
 
+    # Creates a line graph of user's weight history using data from database
+    def get_weight_data(self, name):
+        weight_history = get_weight_history(name)
+
+        self.weights = [
+            float(weight)
+            for date, weight in weight_history
+        ]
+
+        if not self.weights:
+            return
+
+        self.update()
+    
     def paintEvent(self, event):
+
+        users = get_all_user_names()
+        if not users:
+            return
+        name = users[0]
+
+        def x_at(i):
+            return margin_l + i * w / (len(self.weights) - 1)
+
+        def y_at(value):
+            return margin_t + (y_max - value) / (y_max - y_min) * h
+        
+        def get_date_labels(username):
+            today = datetime.datetime.today().date()
+            weight_logs = get_weight_history(username)
+
+            if not weight_logs:
+                return []
+
+            first_day = weight_logs[0][0]
+
+            if isinstance(first_day, datetime.datetime):
+                first_day = first_day.date()
+            elif isinstance(first_day, str):
+                first_day = datetime.datetime.strptime(first_day, "%Y-%m-%d").date()
+
+            cutoff_date = max(first_day, today - datetime.timedelta(days=30))
+
+            labels = []
+            current_date = today
+
+            while current_date >= cutoff_date:
+                labels.insert(0,current_date.strftime("%d %b"))
+                current_date -= datetime.timedelta(days=7)
+
+            return labels
+        
+        def get_min_max(username):
+            weight_history = get_weight_history(username)
+            min_weight = min(float(weight) for date, weight in weight_history)
+            max_weight = max(float(weight) for date, weight in weight_history)
+            return min_weight,max_weight
+
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
 
@@ -61,14 +117,11 @@ class WeightChart(QWidget):
         w = self.width() - margin_l - margin_r
         h = self.height() - margin_t - margin_b
 
-        y_min, y_max = 140, 190
+        y_min, y_max = get_min_max(name)
+        y_min=y_min-10
+        y_max = y_max+10
 
-        def x_at(i):
-            return margin_l + i * w / (len(self.weights) - 1)
-
-        def y_at(value):
-            return margin_t + (y_max - value) / (y_max - y_min) * h
-
+            
         p.setFont(QFont("Arial", 9))
         p.setPen(QColor("#6B7280"))
         for y in range(140, 191, 10):
@@ -82,7 +135,8 @@ class WeightChart(QWidget):
         p.setPen(QPen(QColor("#34A853"), 2, Qt.DashLine))
         p.drawLine(margin_l, goal_y, margin_l + w, goal_y)
         p.setPen(QColor("#34A853"))
-        p.drawText(margin_l + w - 100, goal_y - 10, "Goal: 150.0 lbs")
+        goal_weight = 150
+        p.drawText(margin_l + w - 100, goal_y - 10, f"Goal: {goal_weight} lbs")
 
         path = QPainterPath(QPointF(x_at(0), y_at(self.weights[0])))
         for i, weight in enumerate(self.weights[1:], 1):
@@ -101,17 +155,35 @@ class WeightChart(QWidget):
         p.setPen(Qt.NoPen)
         p.drawRoundedRect(last_x - 3, last_y - 15, 52, 28, 6, 6)
         p.setPen(QColor("#FFFFFF"))
-        p.drawText(last_x + 5, last_y + 4, "168.4")
+        weight_history=get_weight_history(name)
+        temp_date,current_weight=weight_history[-1]
+        p.drawText(last_x + 5, last_y + 4, f"{current_weight}")
 
         p.setPen(QColor("#6B7280"))
-        labels = ["Feb 22", "Mar 7", "Mar 21", "Apr 4", "Apr 18", "May 2", "May 16", "May 22"]
+
+        labels = get_date_labels(name)
         for i, label in enumerate(labels):
-            x = margin_l + i * w / (len(labels) - 1)
+            if len(labels) == 1:
+                x = margin_l + w / 2
+            else:
+                x = margin_l + i * w / (len(labels) - 1)
             p.drawText(x - 20, self.height() - 22, label)
 
 
 class Dashboard(QWidget):
     def __init__(self):
+
+        users = get_all_user_names()
+        if not users:
+            return
+        name = users[0]
+
+        weight_history=get_weight_history(name)
+        temp_date,current_weight=weight_history[-1]
+        temp_date,yesterdays_weight=weight_history[-2]
+        changed_weight=current_weight-yesterdays_weight
+        goal_weight = 150
+
         super().__init__()
         self.setWindowTitle("WeightTrack")
         self.resize(1440, 850)
@@ -186,7 +258,7 @@ class Dashboard(QWidget):
         title_box.addWidget(title)
         title_box.addWidget(subtitle)
 
-        date = QLabel("📅  May 22, 2024")
+        date = QLabel(f"📅  {datetime.datetime.today().date()}")
         date.setObjectName("date")
 
         header.addLayout(title_box)
@@ -203,12 +275,12 @@ class Dashboard(QWidget):
 
         wl.addWidget(QLabel("Enter your weight for today"))
 
-        weight_input = QLineEdit("168.4")
+        weight_input = QLineEdit("0.0")
         weight_input.setObjectName("weightInput")
         weight_input.setAlignment(Qt.AlignLeft)
         wl.addWidget(weight_input)
 
-        wl.addWidget(QLabel("📅  May 22, 2024"))
+        wl.addWidget(QLabel(f"📅  {datetime.datetime.today().date()}"))
 
         save = QPushButton("Save Weight")
         save.setObjectName("primaryButton")
@@ -221,7 +293,7 @@ class Dashboard(QWidget):
         left_goal = QVBoxLayout()
         left_goal.addWidget(QLabel("Goal Weight"))
 
-        goal_value = QLabel("150.0 lbs")
+        goal_value = QLabel(f"{goal_weight} lbs")
         goal_value.setObjectName("metric")
         left_goal.addWidget(goal_value)
 
@@ -232,7 +304,7 @@ class Dashboard(QWidget):
 
         donut_box = QVBoxLayout()
         donut_box.addWidget(Donut(64))
-        donut_box.addWidget(QLabel("18.4 lbs to go"), alignment=Qt.AlignCenter)
+        donut_box.addWidget(QLabel(f"{round(current_weight-goal_weight,1)} lbs to go"), alignment=Qt.AlignCenter)
 
         gl.addLayout(left_goal)
         gl.addLayout(donut_box)
@@ -241,9 +313,9 @@ class Dashboard(QWidget):
         sl = QVBoxLayout(summary_card)
         sl.setContentsMargins(28, 24, 28, 24)
         sl.addWidget(QLabel("Summary"))
-        sl.addWidget(QLabel("↗   Current Weight                         168.4 lbs"))
-        sl.addWidget(QLabel("↓   Change vs yesterday                  -0.6 lbs"))
-        sl.addWidget(QLabel("↓   Change vs goal                       -18.4 lbs"))
+        sl.addWidget(QLabel(f"↗   Current Weight                         {round(current_weight,1)} lbs"))
+        sl.addWidget(QLabel(f"↓   Change vs yesterday                  {round(changed_weight,1)} lbs"))
+        sl.addWidget(QLabel(f"↓   Change vs goal                       {round(current_weight-goal_weight,1)} lbs"))
         sl.addStretch()
 
         grid.addWidget(weight_card, 0, 0)
@@ -266,7 +338,9 @@ class Dashboard(QWidget):
         chart_header.addWidget(tabs)
 
         chart_layout.addLayout(chart_header)
-        chart_layout.addWidget(WeightChart())
+        self.weight_chart = WeightChart()
+        chart_layout.addWidget(self.weight_chart)
+        self.weight_chart.get_weight_data(name)
 
         main_layout.addWidget(chart_card)
 
