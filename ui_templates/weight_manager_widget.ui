@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>weight_manager_widget</class>
+ <widget class="QWidget" name="weight_manager_widget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>680</width>
+    <height>370</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Stat Tracker</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout" rowstretch="1" columnstretch="0">
+   <item row="0" column="0">
+    <layout class="QVBoxLayout" name="verticalLayout"/>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -17,6 +17,7 @@ from sql.queries.create_database import *
 from sql.queries.insert_database import *
 from sql.queries.read_database import *
 from sql.queries.edit_database import *
+from widgets.weight.weight_manager_widget import Ui_weight_manager_widget
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -53,10 +54,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.weight_ui = Ui_weight_widget()
         self.weight_ui.setupUi(self.weight_widget)
 
-        # Debug screen
+        # Home screen
         self.debug_widget = QtWidgets.QWidget()
         self.debug_ui = Ui_debug_widget()
         self.debug_ui.setupUi(self.debug_widget)
+
+        # Weight Manager screen
+        self.weight_manager_widget = QtWidgets.QWidget()
+        self.weight_manager_ui = Ui_weight_manager_widget()
+        self.weight_manager_ui.setupUi(self.weight_manager_widget)
 
         # Add to stack
         self.stack.addWidget(self.welcome_widget)
@@ -65,6 +71,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stack.addWidget(self.height_widget)
         self.stack.addWidget(self.weight_widget)
         self.stack.addWidget(self.debug_widget)
+        self.stack.addWidget(self.weight_manager_widget)
 
         # Ensure DB/tables exist
         create_database()
