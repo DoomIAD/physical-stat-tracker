@@ -11,13 +11,13 @@ from widgets.setup.name_widget import Ui_name_widget
 from widgets.setup.birthdate_widget import Ui_birthdate_widget
 from widgets.setup.height_widget import Ui_height_widget
 from widgets.setup.weight_widget import Ui_weight_widget
-from widgets.main.home_widget import Ui_debug_widget
+from widgets.main.styled_home_widget import Ui_debug_widget
+from widgets.weight.weight_dashboard_widget import Dashboard
 
 from sql.queries.create_database import *
 from sql.queries.insert_database import *
 from sql.queries.read_database import *
 from sql.queries.edit_database import *
-from widgets.weight.weight_manager_widget import Ui_weight_manager_widget
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -60,9 +60,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.debug_ui.setupUi(self.debug_widget)
 
         # Weight Manager screen
-        self.weight_manager_widget = QtWidgets.QWidget()
-        self.weight_manager_ui = Ui_weight_manager_widget()
-        self.weight_manager_ui.setupUi(self.weight_manager_widget)
+        self.weight_dashboard_widget = Dashboard()
 
         # Add to stack
         self.stack.addWidget(self.welcome_widget)
@@ -71,7 +69,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.stack.addWidget(self.height_widget)
         self.stack.addWidget(self.weight_widget)
         self.stack.addWidget(self.debug_widget)
-        self.stack.addWidget(self.weight_manager_widget)
+        self.stack.addWidget(self.weight_dashboard_widget)
+
+        self.debug_ui.connect_navigation(
+            stack=self.stack,
+            home_widget=self.debug_widget,
+            weight_widget=self.weight_dashboard_widget,
+        )
+
+        self.weight_dashboard_widget.connect_navigation(
+            stack=self.stack,
+            home_widget=self.debug_widget,
+            weight_widget=self.weight_dashboard_widget,
+        )
 
         # Ensure DB/tables exist
         create_database()
@@ -117,13 +127,14 @@ class MainWindow(QtWidgets.QMainWindow):
         height_feet = self.height_ui.ft_textEdit.toPlainText()
         height_inches = self.height_ui.in_textEdit.toPlainText()
         weight = self.weight_ui.weight_textEdit.toPlainText()
+        print(f"Saving data: {name}, {birthdate.toString('yyyy-MM-dd')}, {height_feet} ft, {height_inches} in, {weight} lbs")
 
         # Saves data to database if all fields are filled out
         if name and birthdate and height_feet and height_inches and weight:
             insert_user(name, int(height_feet), float(height_inches), birthdate.toString("yyyy-MM-dd"))
             try:
                 weight_value = float(weight)
-                insert_weight(name, weight_value, datetime.now().strftime("%Y-%m-%d"))
+                insert_weight(name, weight_value, datetime.datetime.now().strftime("%Y-%m-%d"))
             except Exception as e:
                 print(f"Invalid weight insert: {e}")
 
@@ -174,13 +185,16 @@ class MainWindow(QtWidgets.QMainWindow):
             widget.setFont(QFont("Arial", font_size))
     
     def finish_setup(self):
+        print("Finishing setup...")
         if not self.data_checking():
+            print("Data check failed, cannot finish setup.")
             return
 
         create_database()
         self.save_data()
         self.settings.setValue("setup_complete", True)
         self.stack.setCurrentWidget(self.debug_widget)
+        print("Setup complete, moving to home screen.")
 
 # Main function to run app
 if __name__ == "__main__":
