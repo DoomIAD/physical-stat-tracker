@@ -12,8 +12,9 @@ from PySide6.QtWidgets import (
     QLayout, QPushButton, QSizePolicy, QVBoxLayout, QWidget
 )
 
-from widgets.main.weight_chart import WeightChartWidget
+from widgets.weight.weight_graph_widget import WeightChart
 from widgets.main.activity_chart import ActivityChartWidget
+from widgets.navigation.navigation_bar_widget import NavigationBar
 
 
 class Ui_debug_widget(object):
@@ -23,76 +24,18 @@ class Ui_debug_widget(object):
 
         debug_widget.resize(1100, 700)
 
-        # Root: copied from the weight dashboard pattern only for the left nav.
-        # The original home content remains in the main content area.
+        # Navigation Bar
         self.rootLayout = QHBoxLayout(debug_widget)
         self.rootLayout.setObjectName(u"rootLayout")
         self.rootLayout.setContentsMargins(0, 0, 0, 0)
         self.rootLayout.setSpacing(0)
 
-        # =========================== Left Navigation =========================== #
-        self.sidebar_frame = QFrame(debug_widget)
-        self.sidebar_frame.setObjectName(u"sidebar")
-        self.sidebar_frame.setFixedWidth(260)
 
-        self.sidebarLayout = QVBoxLayout(self.sidebar_frame)
-        self.sidebarLayout.setObjectName(u"sidebarLayout")
-        self.sidebarLayout.setContentsMargins(24, 32, 24, 24)
-        self.sidebarLayout.setSpacing(18)
-
-        self.logo_label = QLabel(u"⚖  Stat Tracker", self.sidebar_frame)
-        self.logo_label.setObjectName(u"logo")
-        self.sidebarLayout.addWidget(self.logo_label)
-
-        self.overview_nav = QPushButton(u"⌂  Overview", self.sidebar_frame)
-        self.overview_nav.setObjectName(u"navActive")
-        self.overview_nav.setCursor(Qt.PointingHandCursor)
-
-        self.weight_nav = QPushButton(u"⌁  Weight", self.sidebar_frame)
-        self.weight_nav.setObjectName(u"nav")
-        self.weight_nav.setCursor(Qt.PointingHandCursor)
-
-        self.goals_nav = QPushButton(u"◎  Goals", self.sidebar_frame)
-        self.goals_nav.setObjectName(u"nav")
-        self.goals_nav.setCursor(Qt.PointingHandCursor)
-
-        self.insights_nav = QPushButton(u"▥  Insights", self.sidebar_frame)
-        self.insights_nav.setObjectName(u"nav")
-        self.insights_nav.setCursor(Qt.PointingHandCursor)
-
-        self.settings_nav = QPushButton(u"⚙  Settings", self.sidebar_frame)
-        self.settings_nav.setObjectName(u"nav")
-        self.settings_nav.setCursor(Qt.PointingHandCursor)
-
-        for button in (
-            self.overview_nav,
-            self.weight_nav,
-            self.goals_nav,
-            self.insights_nav,
-            self.settings_nav,
-        ):
-            button.setFlat(True)
-            button.setMinimumHeight(44)
-            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            self.sidebarLayout.addWidget(button)
-
-        self.sidebarLayout.addStretch()
-
-        self.note_label = QLabel(
-            u"✦\n\nYou've got this!\nConsistency today creates\nresults tomorrow.",
-            self.sidebar_frame,
+        self.navigation_bar = NavigationBar(
+            active_page="Overview",
+            parent=debug_widget
         )
-        self.note_label.setObjectName(u"note")
-        self.note_label.setWordWrap(True)
-        self.sidebarLayout.addWidget(self.note_label)
-
-        self.profile_pushButton = QPushButton(u"U    Profile                         ˅", self.sidebar_frame)
-        self.profile_pushButton.setObjectName(u"user")
-        self.profile_pushButton.setFlat(True)
-        self.profile_pushButton.setCursor(Qt.PointingHandCursor)
-        self.sidebarLayout.addWidget(self.profile_pushButton)
-
-        self.rootLayout.addWidget(self.sidebar_frame)
+        self.rootLayout.addWidget(self.navigation_bar)
 
         # =========================== Original Home Content =========================== #
         self.main_frame = QFrame(debug_widget)
@@ -112,7 +55,7 @@ class Ui_debug_widget(object):
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
 
-        # Header: original title retained, sidebar/profile button removed from top.
+        # =========================== Header ===========================
         self.top_Layout = QHBoxLayout()
         self.top_Layout.setSpacing(20)
         self.top_Layout.setObjectName(u"top_Layout")
@@ -124,6 +67,7 @@ class Ui_debug_widget(object):
 
         self.verticalLayout.addLayout(self.top_Layout)
 
+        # =========================== Body ===========================
         self.graph_Layout = QHBoxLayout()
         self.graph_Layout.setSpacing(22)
         self.graph_Layout.setObjectName(u"graph_Layout")
@@ -137,9 +81,13 @@ class Ui_debug_widget(object):
         self.weightchart_title.setObjectName(u"sectionTitle")
         self.weightchart_card_layout.addWidget(self.weightchart_title)
 
-        self.weightchart_widget = WeightChartWidget(self.weightchart_card)
+        self.weightchart_widget = WeightChart()
         self.weightchart_widget.setObjectName(u"weightchart_widget")
-        self.weightchart_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.weightchart_widget.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Expanding
+        )
+
         self.weightchart_card_layout.addWidget(self.weightchart_widget)
 
         self.graph_Layout.addWidget(self.weightchart_card)
@@ -225,6 +173,7 @@ class Ui_debug_widget(object):
         self.original_show_event = debug_widget.showEvent
         self.debug_widget.showEvent = self.on_show_event
 
+    # Style Sheet for the app (Light themed)
     def apply_styles(self, debug_widget):
         debug_widget.setStyleSheet("""
             QWidget {
@@ -328,22 +277,7 @@ class Ui_debug_widget(object):
         """)
 
 
-    def _refresh_nav_button_style(self, button):
-        button.style().unpolish(button)
-        button.style().polish(button)
-        button.update()
-
-    def set_active_nav(self, active_button):
-        for button in (
-            self.overview_nav,
-            self.weight_nav,
-            self.goals_nav,
-            self.insights_nav,
-            self.settings_nav,
-        ):
-            button.setObjectName(u"navActive" if button is active_button else u"nav")
-            self._refresh_nav_button_style(button)
-
+    # Nav logic for side panel
     def connect_navigation(
         self,
         stack,
@@ -353,40 +287,21 @@ class Ui_debug_widget(object):
         insights_widget=None,
         settings_widget=None,
     ):
-        """Connect the left navigation bar to a QStackedWidget.
-
-        Pass only the screens that currently exist. Missing screens are disabled
-        so users cannot click into pages that have not been built yet.
-        """
-        home_widget = home_widget or self.debug_widget
-
-        nav_targets = {
-            self.overview_nav: home_widget,
-            self.weight_nav: weight_widget,
-            self.goals_nav: goals_widget,
-            self.insights_nav: insights_widget,
-            self.settings_nav: settings_widget,
-        }
-
-        for button, target_widget in nav_targets.items():
-            if target_widget is None:
-                button.setEnabled(False)
-                continue
-
-            button.setEnabled(True)
-            button.clicked.connect(
-                lambda checked=False, btn=button, target=target_widget: self._navigate_to(
-                    stack, btn, target
-                )
-            )
-
-    def _navigate_to(self, stack, active_button, target_widget):
-        stack.setCurrentWidget(target_widget)
-        self.set_active_nav(active_button)
+        self.navigation_bar.connect_navigation(
+            stack,
+            home_widget,
+            weight_widget,
+            goals_widget,
+            insights_widget,
+            settings_widget,
+        )
 
     # Overide to run update_label() every time widget is shown
     def on_show_event(self, event):
-        self.set_active_nav(self.overview_nav)
+        self.navigation_bar.set_active_nav(
+            self.navigation_bar.overview_nav_button
+        )
+
         self.update_label()
         self.original_show_event(event)
 
@@ -412,7 +327,7 @@ class Ui_debug_widget(object):
 
         # Updates name label with user's name
         def update_name():
-            self.title_label.setText(f"Hey There {name}")
+            self.title_label.setText(f"Hey There {name},")
 
         # Updates BMI label with calculated BMI from user data
         def update_bmi():
@@ -458,31 +373,7 @@ class Ui_debug_widget(object):
 
     # Creates a line graph of user's weight history using data from database
     def update_weight_graph(self, name):
-        weight_history = get_weight_history(name)
-
-        series = self.weightchart_widget.series
-        series.clear()
-
-        if not weight_history:
-            return
-
-        weights = []
-
-        for index, (date, weight) in enumerate(weight_history):
-            weight = float(weight)
-            series.append(index, weight)
-            weights.append(weight)
-
-        axis_x = self.weightchart_widget.axis_x
-        axis_y = self.weightchart_widget.axis_y
-
-        axis_x.setRange(0, len(weight_history) - 1)
-
-        min_weight = min(weights)
-        max_weight = max(weights)
-        padding = 2
-
-        axis_y.setRange(min_weight - padding, max_weight + padding)
+        self.weightchart_widget.get_weight_data(name)
     
     # Creates a GitHub like activity graph to show amount of time user spent exercising each day
     def update_activity_graph(self, name):

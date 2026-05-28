@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (QApplication, QGridLayout, QHBoxLayout, QLabel,
 
 from widgets.main.weight_chart import WeightChartWidget
 from widgets.main.activity_chart import ActivityChartWidget
+from widgets.navigation.navigation_bar_widget import NavigationBar
 
 class Ui_debug_widget(object):
     def setupUi(self, debug_widget):
@@ -46,17 +47,13 @@ class Ui_debug_widget(object):
         self.top_Layout.setSpacing(20)
         self.top_Layout.setObjectName(u"top_Layout")
         self.top_Layout.setSizeConstraint(QLayout.SizeConstraint.SetDefaultConstraint)
-        self.sidebar_pushButton = QPushButton(debug_widget)
-        self.sidebar_pushButton.setObjectName(u"sidebar_pushButton")
+        self.navigation_bar = NavigationBar(active_page="Overview", parent=debug_widget)
+        self.gridLayout.addWidget(self.navigation_bar, 0, 0, 2, 1)
+
+        self.title_label = QLabel(debug_widget)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.sidebar_pushButton.sizePolicy().hasHeightForWidth())
-        self.sidebar_pushButton.setSizePolicy(sizePolicy)
-
-        self.top_Layout.addWidget(self.sidebar_pushButton)
-
-        self.title_label = QLabel(debug_widget)
         self.title_label.setObjectName(u"title_label")
         sizePolicy.setHeightForWidth(self.title_label.sizePolicy().hasHeightForWidth())
         self.title_label.setSizePolicy(sizePolicy)
@@ -70,9 +67,8 @@ class Ui_debug_widget(object):
 
         self.top_Layout.addWidget(self.profile_pushButton)
 
-        self.top_Layout.setStretch(0, 1)
-        self.top_Layout.setStretch(1, 6)
-        self.top_Layout.setStretch(2, 1)
+        self.top_Layout.setStretch(0, 6)
+        self.top_Layout.setStretch(1, 1)
 
         self.verticalLayout.addLayout(self.top_Layout)
 
@@ -155,7 +151,7 @@ class Ui_debug_widget(object):
         self.centerLayout.addLayout(self.verticalLayout)
 
 
-        self.gridLayout.addLayout(self.centerLayout, 1, 0, 1, 1)
+        self.gridLayout.addLayout(self.centerLayout, 0, 1, 2, 1)
 
         self.gridLayout.setRowStretch(0, 1)
 
@@ -294,7 +290,6 @@ class Ui_debug_widget(object):
 
     def retranslateUi(self, debug_widget):
         debug_widget.setWindowTitle(QCoreApplication.translate("debug_widget", u"Stat Tracker", None))
-        self.sidebar_pushButton.setText(QCoreApplication.translate("debug_widget", u"side_bar", None))
         self.title_label.setText(QCoreApplication.translate("debug_widget", u"Hey There <user>", None))
         self.profile_pushButton.setText(QCoreApplication.translate("debug_widget", u"Profile", None))
         self.today_label.setText(QCoreApplication.translate("debug_widget", u"Today's Workout", None))
