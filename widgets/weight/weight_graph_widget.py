@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, QPointF
 from PySide6.QtGui import QPainter, QPen, QColor, QFont, QPainterPath
 from PySide6.QtWidgets import QWidget
 
-from sql.queries.read_database import get_weight_history
+from sql.queries.read_database import get_goal_data, get_weight_history
 
 
 class WeightChart(QWidget):
@@ -19,6 +19,11 @@ class WeightChart(QWidget):
     # Creates a line graph of user's weight history using data from database
     def get_weight_data(self, name):
         self.name = name
+
+        goal_data = get_goal_data(name)
+        if goal_data is not None:
+            self.goal, _ = goal_data
+
         weight_history = get_weight_history(name)
 
         self.dates = []
@@ -28,6 +33,10 @@ class WeightChart(QWidget):
             self.dates.append(self._to_date(date))
             self.weights.append(float(weight))
 
+        self.update()
+
+    def set_goal(self, goal):
+        self.goal = float(goal)
         self.update()
 
     def _to_date(self, value):

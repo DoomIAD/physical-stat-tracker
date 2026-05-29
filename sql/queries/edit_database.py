@@ -27,7 +27,7 @@ def update_user(username, height_ft=None, height_in=None, birthdate=None, gender
         set_clause.append("goal = ?")
         params.append(goal)
     if start_weight is not None:
-        set_clause.append("goal_date = ?")
+        set_clause.append("start_weight = ?")
         params.append(start_weight)
 
 

@@ -311,12 +311,6 @@ def get_activity_history(username):
 
                     activity_data[row][col] = value
 
-                    print(
-                        f"Date: {date_str}, "
-                        f"Score: {score}, "
-                        f"Grid Value: {value}"
-                    )
-
                     day_index += 1
 
             return activity_data
@@ -333,7 +327,7 @@ def get_goal_data(username):
     try:
         with sqlite3.connect('sql/my_database.db') as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT goal,start_weight FROM users WHERE username = ?", (username))
+            cursor.execute("SELECT goal,start_weight FROM users WHERE username = ?", (username,))
             result = cursor.fetchone()
             return result
     except sqlite3.Error as e:

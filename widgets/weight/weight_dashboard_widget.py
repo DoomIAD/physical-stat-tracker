@@ -52,13 +52,16 @@ class Donut(QWidget):
 class Dashboard(QWidget):
     def __init__(self):
 
+        # gets username of active user
         users = get_all_user_names()
         if not users:
             return
         name = users[0]
 
+        # Gets basic weight related details
         weight_history=get_weight_history(name)
         temp_date, self.current_weight = weight_history[-1]
+        # Sets yesterday's weight to today's if no data for yesterday
         if len(weight_history)>1:
             temp_date,yesterdays_weight=weight_history[-2]
             changed_weight=self.current_weight-yesterdays_weight
@@ -66,8 +69,8 @@ class Dashboard(QWidget):
             yesterdays_weight = self.current_weight
             changed_weight=0
         
+        # Uses goal data if existing in DB, else use 150lb default
         goal_data = get_goal_data(name)
-
         if goal_data is None:
             self.goal_weight = 150
             self.start_weight = 150
@@ -151,20 +154,7 @@ class Dashboard(QWidget):
 
         donut_box = QVBoxLayout()
 
-        if (self.start_weight - self.goal_weight) != 0:
-            progress = round(
-                (
-                    (self.start_weight - self.current_weight)
-                    / (self.start_weight - self.goal_weight)
-                ) * 100,
-                1
-            )
-        else:
-            progress = 1
-
-        progress = max(0, min(progress, 100))
-
-        self.donut = Donut(progress)
+        self.donut = Donut(self.calculate_progress())
 
         donut_box.addWidget(self.donut)
 
@@ -197,6 +187,7 @@ class Dashboard(QWidget):
 
         chart_layout.addLayout(chart_header)
         self.weight_chart = WeightChart()
+        self.weight_chart.goal = self.goal_weight
         chart_layout.addWidget(self.weight_chart)
         self.weight_chart.get_weight_data(name)
 
@@ -343,11 +334,22 @@ class Dashboard(QWidget):
         """)
 
 
+    def calculate_progress(self):
+        total_change = self.start_weight - self.goal_weight
+
+        if total_change == 0:
+            return 100 if self.current_weight == self.goal_weight else 0
+
+        progress = ((self.start_weight - self.current_weight) / total_change) * 100
+        return max(0, min(round(progress, 1), 100))
+
     def save_weight(self,name):
         weight=self.weight_input.text()
         insert_weight(name, round(float(weight),1), datetime.datetime.now().strftime("%Y-%m-%d"))
+        self.current_weight = round(float(weight), 1)
         self.weight_chart.get_weight_data(name)
-        self.weight_chart.update()
+        self.donut.progress = self.calculate_progress()
+        self.donut.update()
         print(f"Saved weight: {weight}")
 
     def open_goal_dialog(self,name):
@@ -364,15 +366,10 @@ class Dashboard(QWidget):
                 start_weight=self.current_weight
             )
 
-            self.weight_chart.goal = new_goal
-            self.weight_chart.update()
+            self.start_weight = self.current_weight
+            self.weight_chart.set_goal(new_goal)
 
-            self.donut.progress = round(
-                (self.start_weight - self.current_weight)
-                / (self.start_weight - self.goal_weight),
-                1
-            ) * 100
-
+            self.donut.progress = self.calculate_progress()
             self.donut.update()
 
             print(f"New goal: {new_goal}")

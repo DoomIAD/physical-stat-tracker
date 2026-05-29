@@ -23,7 +23,7 @@ class MainWindow(QtWidgets.QMainWindow):
         super().__init__()
         self.setMinimumSize(400, 300)
 
-        # Ensure DB/tables exist
+        # Ensure DB/tables exist, else create them
         create_database()
 
         # Stack
@@ -64,12 +64,13 @@ class MainWindow(QtWidgets.QMainWindow):
         # Weight Manager screen
         has_user = len(get_all_user_names()) > 0
 
+        # Only load the weight screen if the user has already been made
         if has_user:
             self.weight_dashboard_widget = Dashboard()
         else:
             self.weight_dashboard_widget = QtWidgets.QWidget()
 
-        # Add to stack
+        # Add them to the stack
         self.stack.addWidget(self.welcome_widget)
         self.stack.addWidget(self.name_widget)
         self.stack.addWidget(self.birthdate_widget)
@@ -106,6 +107,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.settings.setValue("setup_complete", False)
             self.stack.setCurrentWidget(self.welcome_widget)
+
         #=========================== Basic Functions ===========================#
 
         # Continue button logic
@@ -147,12 +149,14 @@ class MainWindow(QtWidgets.QMainWindow):
     def data_checking(self):
         current_index = self.stack.currentIndex()
 
+        # Removes spaces around name and checks for existence
         if current_index == 1:
             name = self.name_ui.name_TextEdit.toPlainText()
             if not name.strip():
                 QtWidgets.QMessageBox.warning(self, "Input Error", "Please enter your name.")
                 return False
 
+        # Height can only be numbers
         elif current_index == 3:
             ft = self.height_ui.ft_textEdit.toPlainText()
             in_ = self.height_ui.in_textEdit.toPlainText()
@@ -160,6 +164,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.warning(self, "Input Error", "Please enter valid numbers for height.")
                 return False
 
+        # Weight can only be numbers
         elif current_index == 4:
             weight = self.weight_ui.weight_textEdit.toPlainText()
             if not weight.replace(".", "", 1).isdigit():
@@ -173,7 +178,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         self.stack.setCurrentIndex(self.stack.currentIndex() + 1)
 
-    # Resizes fonts of all screens when window is resized
+    # Resizes fonts of all setup screens when window is resized
     def resizeEvent(self, event):
         self.update_fonts([
             self.welcome_ui.welcome_title,
@@ -183,12 +188,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self.name_ui.name_title
         ])
         super().resizeEvent(event)
+
     # Font specific function for resize
     def update_fonts(self, labels):
         font_size = int(self.width() / 20)
         for widget in labels:
             widget.setFont(QFont("Arial", font_size))
     
+    # Checks data for correct inputs before finishing
     def finish_setup(self):
         print("Finishing setup...")
 
