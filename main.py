@@ -1,17 +1,17 @@
-from datetime import datetime
+import datetime
 from PySide6 import QtWidgets
 from PySide6.QtGui import QFont
 from PySide6.QtCore import QSettings
 import sys
 import math
-from datetime import date
 
 from widgets.setup.welcome_widget import Ui_welcome_screen
 from widgets.setup.name_widget import Ui_name_widget
 from widgets.setup.birthdate_widget import Ui_birthdate_widget
 from widgets.setup.height_widget import Ui_height_widget
 from widgets.setup.weight_widget import Ui_weight_widget
-from widgets.main.home_widget import Ui_debug_widget
+from widgets.main.styled_home_widget import Ui_debug_widget
+from widgets.weight.weight_dashboard_widget import Dashboard
 
 from sql.queries.create_database import *
 from sql.queries.insert_database import *
@@ -22,6 +22,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.setMinimumSize(400, 300)
+
+        # Ensure DB/tables exist, else create them
+        create_database()
 
         # Stack
         self.stack = QtWidgets.QStackedWidget()
@@ -53,21 +56,41 @@ class MainWindow(QtWidgets.QMainWindow):
         self.weight_ui = Ui_weight_widget()
         self.weight_ui.setupUi(self.weight_widget)
 
-        # Debug screen
+        # Home screen
         self.debug_widget = QtWidgets.QWidget()
         self.debug_ui = Ui_debug_widget()
         self.debug_ui.setupUi(self.debug_widget)
 
-        # Add to stack
+        # Weight Manager screen
+        has_user = len(get_all_user_names()) > 0
+
+        # Only load the weight screen if the user has already been made
+        if has_user:
+            self.weight_dashboard_widget = Dashboard()
+        else:
+            self.weight_dashboard_widget = QtWidgets.QWidget()
+
+        # Add them to the stack
         self.stack.addWidget(self.welcome_widget)
         self.stack.addWidget(self.name_widget)
         self.stack.addWidget(self.birthdate_widget)
         self.stack.addWidget(self.height_widget)
         self.stack.addWidget(self.weight_widget)
         self.stack.addWidget(self.debug_widget)
+        self.stack.addWidget(self.weight_dashboard_widget)
 
-        # Ensure DB/tables exist
-        create_database()
+        self.debug_ui.connect_navigation(
+            stack=self.stack,
+            home_widget=self.debug_widget,
+            weight_widget=self.weight_dashboard_widget,
+        )
+
+        if has_user:
+            self.weight_dashboard_widget.connect_navigation(
+                stack=self.stack,
+                home_widget=self.debug_widget,
+                weight_widget=self.weight_dashboard_widget,
+            )
 
         # Persistent app settings
         self.settings = QSettings("physical-stat-tracker", "physical-stat-tracker")
@@ -84,6 +107,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.settings.setValue("setup_complete", False)
             self.stack.setCurrentWidget(self.welcome_widget)
+
         #=========================== Basic Functions ===========================#
 
         # Continue button logic
@@ -110,13 +134,14 @@ class MainWindow(QtWidgets.QMainWindow):
         height_feet = self.height_ui.ft_textEdit.toPlainText()
         height_inches = self.height_ui.in_textEdit.toPlainText()
         weight = self.weight_ui.weight_textEdit.toPlainText()
+        print(f"Saving data: {name}, {birthdate.toString('yyyy-MM-dd')}, {height_feet} ft, {height_inches} in, {weight} lbs")
 
         # Saves data to database if all fields are filled out
         if name and birthdate and height_feet and height_inches and weight:
             insert_user(name, int(height_feet), float(height_inches), birthdate.toString("yyyy-MM-dd"))
             try:
                 weight_value = float(weight)
-                insert_weight(name, weight_value, datetime.now().strftime("%Y-%m-%d"))
+                insert_weight(name, weight_value, datetime.datetime.now().strftime("%Y-%m-%d"))
             except Exception as e:
                 print(f"Invalid weight insert: {e}")
 
@@ -124,12 +149,14 @@ class MainWindow(QtWidgets.QMainWindow):
     def data_checking(self):
         current_index = self.stack.currentIndex()
 
+        # Removes spaces around name and checks for existence
         if current_index == 1:
             name = self.name_ui.name_TextEdit.toPlainText()
             if not name.strip():
                 QtWidgets.QMessageBox.warning(self, "Input Error", "Please enter your name.")
                 return False
 
+        # Height can only be numbers
         elif current_index == 3:
             ft = self.height_ui.ft_textEdit.toPlainText()
             in_ = self.height_ui.in_textEdit.toPlainText()
@@ -137,6 +164,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.warning(self, "Input Error", "Please enter valid numbers for height.")
                 return False
 
+        # Weight can only be numbers
         elif current_index == 4:
             weight = self.weight_ui.weight_textEdit.toPlainText()
             if not weight.replace(".", "", 1).isdigit():
@@ -150,7 +178,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         self.stack.setCurrentIndex(self.stack.currentIndex() + 1)
 
-    # Resizes fonts of all screens when window is resized
+    # Resizes fonts of all setup screens when window is resized
     def resizeEvent(self, event):
         self.update_fonts([
             self.welcome_ui.welcome_title,
@@ -160,20 +188,46 @@ class MainWindow(QtWidgets.QMainWindow):
             self.name_ui.name_title
         ])
         super().resizeEvent(event)
+
     # Font specific function for resize
     def update_fonts(self, labels):
         font_size = int(self.width() / 20)
         for widget in labels:
             widget.setFont(QFont("Arial", font_size))
     
+    # Checks data for correct inputs before finishing
     def finish_setup(self):
+        print("Finishing setup...")
+
         if not self.data_checking():
+            print("Data check failed, cannot finish setup.")
             return
 
         create_database()
         self.save_data()
         self.settings.setValue("setup_complete", True)
+
+        old_widget = self.weight_dashboard_widget
+        self.stack.removeWidget(old_widget)
+        old_widget.deleteLater()
+
+        self.weight_dashboard_widget = Dashboard()
+        self.stack.addWidget(self.weight_dashboard_widget)
+
+        self.weight_dashboard_widget.connect_navigation(
+            stack=self.stack,
+            home_widget=self.debug_widget,
+            weight_widget=self.weight_dashboard_widget,
+        )
+
+        self.debug_ui.connect_navigation(
+            stack=self.stack,
+            home_widget=self.debug_widget,
+            weight_widget=self.weight_dashboard_widget,
+        )
+
         self.stack.setCurrentWidget(self.debug_widget)
+        print("Setup complete, moving to home screen.")
 
 # Main function to run app
 if __name__ == "__main__":

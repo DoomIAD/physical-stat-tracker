@@ -15,7 +15,9 @@ def create_database():
                     birthdate DATE NOT NULL,
                     gender TEXT,
                     neck_circumference REAL,
-                    waist_circumference REAL
+                    waist_circumference REAL,
+                    goal REAL,
+                    start_weight REAL
                 )
             ''')
 
