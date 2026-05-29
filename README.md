@@ -19,6 +19,10 @@ Still in the works
 - Visualize your history
   - Line chart of weight
   - Activity chart for amount of time spent working out
+    
+- Set weight goals and track your progress
+
+- Clean UI design
 
 ## 📌 Features in Development
 
@@ -26,7 +30,6 @@ Still in the works
   - Neck circumference
   - Waist circumference
   - Gender
-- Weight requested on each day's startup
 - Create and modify workouts and specific exercises
 - Notification of workout plans
 - Interactive timer for workouts
