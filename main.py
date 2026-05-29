@@ -1,10 +1,9 @@
-from datetime import datetime
+import datetime
 from PySide6 import QtWidgets
 from PySide6.QtGui import QFont
 from PySide6.QtCore import QSettings
 import sys
 import math
-from datetime import date
 
 from widgets.setup.welcome_widget import Ui_welcome_screen
 from widgets.setup.name_widget import Ui_name_widget
@@ -23,6 +22,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.setMinimumSize(400, 300)
+
+        # Ensure DB/tables exist
+        create_database()
 
         # Stack
         self.stack = QtWidgets.QStackedWidget()
@@ -60,7 +62,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.debug_ui.setupUi(self.debug_widget)
 
         # Weight Manager screen
-        self.weight_dashboard_widget = Dashboard()
+        has_user = len(get_all_user_names()) > 0
+
+        if has_user:
+            self.weight_dashboard_widget = Dashboard()
+        else:
+            self.weight_dashboard_widget = QtWidgets.QWidget()
 
         # Add to stack
         self.stack.addWidget(self.welcome_widget)
@@ -77,14 +84,12 @@ class MainWindow(QtWidgets.QMainWindow):
             weight_widget=self.weight_dashboard_widget,
         )
 
-        self.weight_dashboard_widget.connect_navigation(
-            stack=self.stack,
-            home_widget=self.debug_widget,
-            weight_widget=self.weight_dashboard_widget,
-        )
-
-        # Ensure DB/tables exist
-        create_database()
+        if has_user:
+            self.weight_dashboard_widget.connect_navigation(
+                stack=self.stack,
+                home_widget=self.debug_widget,
+                weight_widget=self.weight_dashboard_widget,
+            )
 
         # Persistent app settings
         self.settings = QSettings("physical-stat-tracker", "physical-stat-tracker")
@@ -186,6 +191,7 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def finish_setup(self):
         print("Finishing setup...")
+
         if not self.data_checking():
             print("Data check failed, cannot finish setup.")
             return
@@ -193,6 +199,26 @@ class MainWindow(QtWidgets.QMainWindow):
         create_database()
         self.save_data()
         self.settings.setValue("setup_complete", True)
+
+        old_widget = self.weight_dashboard_widget
+        self.stack.removeWidget(old_widget)
+        old_widget.deleteLater()
+
+        self.weight_dashboard_widget = Dashboard()
+        self.stack.addWidget(self.weight_dashboard_widget)
+
+        self.weight_dashboard_widget.connect_navigation(
+            stack=self.stack,
+            home_widget=self.debug_widget,
+            weight_widget=self.weight_dashboard_widget,
+        )
+
+        self.debug_ui.connect_navigation(
+            stack=self.stack,
+            home_widget=self.debug_widget,
+            weight_widget=self.weight_dashboard_widget,
+        )
+
         self.stack.setCurrentWidget(self.debug_widget)
         print("Setup complete, moving to home screen.")
 

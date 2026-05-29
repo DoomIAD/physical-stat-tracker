@@ -2,7 +2,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFrame, QLabel, QPushButton, QVBoxLayout, QSizePolicy
 )
-
+from shiboken6 import isValid
 
 class NavigationBar(QFrame):
     def __init__(self, active_page="Weight", parent=None):
@@ -98,17 +98,43 @@ class NavigationBar(QFrame):
             "Settings": settings_widget,
         }
 
+        self._nav_stack = stack
+        self._nav_indexes = {}
+
         for name, button in self.nav_buttons.items():
             target = routes.get(name)
 
-            if target is not None:
+            try:
+                button.clicked.disconnect()
+            except RuntimeError:
+                pass
+            except TypeError:
+                pass
+
+            if target is not None and isValid(target):
+                index = stack.indexOf(target)
+
+                if index == -1:
+                    stack.addWidget(target)
+                    index = stack.indexOf(target)
+
+                self._nav_indexes[button] = index
                 button.setEnabled(True)
                 button.clicked.connect(
-                    lambda checked=False, btn=button, w=target: self.navigate_to(stack, btn, w)
+                    lambda checked=False, btn=button: self.navigate_to(btn)
                 )
             else:
                 button.setEnabled(False)
 
-    def navigate_to(self, stack, active_button, target_widget):
-        stack.setCurrentWidget(target_widget)
+
+    def navigate_to(self, active_button):
+        index = self._nav_indexes.get(active_button)
+
+        if index is None:
+            return
+
+        if index < 0 or index >= self._nav_stack.count():
+            return
+
+        self._nav_stack.setCurrentIndex(index)
         self.set_active_nav(active_button)

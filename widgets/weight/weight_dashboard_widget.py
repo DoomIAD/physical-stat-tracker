@@ -5,12 +5,15 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
-    QFrame, QGridLayout, QLineEdit, QSizePolicy
+    QFrame, QGridLayout, QLineEdit, QSizePolicy, QDialog, QDialogButtonBox
 )
 
+from sql.queries.edit_database import update_user
+from sql.queries.insert_database import insert_weight
+from widgets.weight.goal_dialog import GoalDialog
 from widgets.weight.weight_graph_widget import WeightChart
 from widgets.navigation.navigation_bar_widget import NavigationBar
-from sql.queries.read_database import get_all_user_names, get_weight_history
+from sql.queries.read_database import get_all_user_names, get_weight_history, get_goal_data
 
 
 class Card(QFrame):
@@ -55,11 +58,21 @@ class Dashboard(QWidget):
         name = users[0]
 
         weight_history=get_weight_history(name)
-        temp_date,current_weight=weight_history[-1]
-        temp_date,yesterdays_weight=weight_history[-2]
-        changed_weight=current_weight-yesterdays_weight
-        start_weight = 170
-        goal_weight = 150
+        temp_date, self.current_weight = weight_history[-1]
+        if len(weight_history)>1:
+            temp_date,yesterdays_weight=weight_history[-2]
+            changed_weight=self.current_weight-yesterdays_weight
+        else:
+            yesterdays_weight = self.current_weight
+            changed_weight=0
+        
+        goal_data = get_goal_data(name)
+
+        if goal_data is None:
+            self.goal_weight = 150
+            self.start_weight = 150
+        else:
+            self.goal_weight, self.start_weight = goal_data
 
         super().__init__()
         self.setWindowTitle("WeightTrack")
@@ -105,13 +118,16 @@ class Dashboard(QWidget):
 
         wl.addWidget(QLabel("Enter your weight for today"))
 
-        weight_input = QLineEdit("0.0")
-        weight_input.setObjectName("weightInput")
-        weight_input.setAlignment(Qt.AlignLeft)
-        wl.addWidget(weight_input)
+        self.weight_input = QLineEdit()
+        self.weight_input.setPlaceholderText("0.0")
+        self.weight_input.setObjectName("weightInput")
+        self.weight_input.setAlignment(Qt.AlignLeft)
+        wl.addWidget(self.weight_input)
+
 
         save = QPushButton("Save Weight")
         save.setObjectName("primaryButton")
+        save.clicked.connect(lambda: self.save_weight(name))
         wl.addWidget(save)
 
         goal_card = Card()
@@ -121,18 +137,36 @@ class Dashboard(QWidget):
         left_goal = QVBoxLayout()
         left_goal.addWidget(QLabel("Goal Weight"))
 
-        goal_value = QLabel(f"{goal_weight} lbs")
-        goal_value.setObjectName("metric")
-        left_goal.addWidget(goal_value)
+        self.goal_value = QLabel(f"{self.goal_weight} lbs")
+        self.goal_value.setObjectName("metric")
+        left_goal.addWidget(self.goal_value)
 
         edit = QPushButton("✎  Edit Goal")
         edit.setObjectName("secondaryButton")
+        edit.clicked.connect(
+            lambda checked=False: self.open_goal_dialog(name)
+        )
         left_goal.addWidget(edit)
         left_goal.addStretch()
 
         donut_box = QVBoxLayout()
-        donut_box.addWidget(Donut(round((start_weight-current_weight)/(start_weight-goal_weight),1)*100))
-        donut_box.addWidget(QLabel(f"{round(current_weight-goal_weight,1)} lbs to go"), alignment=Qt.AlignCenter)
+
+        if (self.start_weight - self.goal_weight) != 0:
+            progress = round(
+                (
+                    (self.start_weight - self.current_weight)
+                    / (self.start_weight - self.goal_weight)
+                ) * 100,
+                1
+            )
+        else:
+            progress = 1
+
+        progress = max(0, min(progress, 100))
+
+        self.donut = Donut(progress)
+
+        donut_box.addWidget(self.donut)
 
         gl.addLayout(left_goal)
         gl.addLayout(donut_box)
@@ -141,7 +175,7 @@ class Dashboard(QWidget):
         sl = QVBoxLayout(summary_card)
         sl.setContentsMargins(28, 24, 28, 24)
         sl.addWidget(QLabel("Summary"))
-        sl.addWidget(QLabel(f"↗   Current Weight                         {round(current_weight,1)} lbs"))
+        sl.addWidget(QLabel(f"↗   Current Weight                         {round(self.current_weight,1)} lbs"))
         sl.addWidget(QLabel(f"↓   Change vs yesterday                  {round(changed_weight,1)} lbs"))
         sl.addStretch()
 
@@ -308,6 +342,40 @@ class Dashboard(QWidget):
                            
         """)
 
+
+    def save_weight(self,name):
+        weight=self.weight_input.text()
+        insert_weight(name, round(float(weight),1), datetime.datetime.now().strftime("%Y-%m-%d"))
+        self.weight_chart.get_weight_data(name)
+        self.weight_chart.update()
+        print(f"Saved weight: {weight}")
+
+    def open_goal_dialog(self,name):
+        dialog = GoalDialog(self.goal_weight, self)
+
+        if dialog.exec():
+            new_goal = dialog.get_goal_weight()
+            self.goal_weight = new_goal
+            self.goal_value.setText(f"{new_goal} lbs")
+
+            update_user(
+                username=name,
+                goal=new_goal,
+                start_weight=self.current_weight
+            )
+
+            self.weight_chart.goal = new_goal
+            self.weight_chart.update()
+
+            self.donut.progress = round(
+                (self.start_weight - self.current_weight)
+                / (self.start_weight - self.goal_weight),
+                1
+            ) * 100
+
+            self.donut.update()
+
+            print(f"New goal: {new_goal}")
 
     def showEvent(self, event):
         self.navigation_bar.set_active_nav(self.navigation_bar.weight_nav_button)

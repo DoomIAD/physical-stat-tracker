@@ -1,7 +1,7 @@
 import sqlite3
 
 def update_user(username, height_ft=None, height_in=None, birthdate=None, gender=None, 
-                neck_circumference=None, waist_circumference=None):
+                neck_circumference=None, waist_circumference=None, goal=None, start_weight=None):
     set_clause = []
     params = []
 
@@ -23,6 +23,13 @@ def update_user(username, height_ft=None, height_in=None, birthdate=None, gender
     if waist_circumference is not None:
         set_clause.append("waist_circumference = ?")
         params.append(waist_circumference)
+    if goal is not None:
+        set_clause.append("goal = ?")
+        params.append(goal)
+    if start_weight is not None:
+        set_clause.append("goal_date = ?")
+        params.append(start_weight)
+
 
     if not set_clause:
         return  # No fields to update
@@ -33,7 +40,7 @@ def update_user(username, height_ft=None, height_in=None, birthdate=None, gender
     execute_query(query, params)
 
 def execute_query(query, params):
-    with sqlite3.connect("your_database.db") as conn:
+    with sqlite3.connect("sql/my_database.db") as conn:
         cursor = conn.cursor()
         cursor.execute(query, params)
         conn.commit()

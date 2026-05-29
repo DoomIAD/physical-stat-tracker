@@ -328,3 +328,17 @@ def get_activity_history(username):
     except Exception as e:
         print(f"Unexpected error getting activity history: {e}")
         return [[0 for _ in range(6)] for _ in range(7)]
+
+def get_goal_data(username):
+    try:
+        with sqlite3.connect('sql/my_database.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT goal,start_weight FROM users WHERE username = ?", (username))
+            result = cursor.fetchone()
+            return result
+    except sqlite3.Error as e:
+        print(f"Database error getting user goals by username: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error getting user goals by username: {e}")
+        return None
