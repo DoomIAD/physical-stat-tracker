@@ -149,7 +149,7 @@ def get_workout_plan_by_name(plan_name):
         with sqlite3.connect("sql/my_database.db") as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT * FROM workout_plans WHERE workout_plan = ?",
+                "SELECT * FROM workout_plans WHERE plan_name = ?",
                 (plan_name,)
             )
             return cursor.fetchone()

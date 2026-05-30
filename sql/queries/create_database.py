@@ -29,7 +29,7 @@ def create_database():
                     date DATE NOT NULL,
                     weight REAL NOT NULL,
                     FOREIGN KEY (username) REFERENCES users(username),
-                    UNIQUE (date)
+                    UNIQUE (username, date)
                 )
             ''')
 
@@ -41,7 +41,7 @@ def create_database():
                     date DATE NOT NULL,
                     score REAL NOT NULL,
                     FOREIGN KEY (username) REFERENCES users(username),
-                    UNIQUE (date)
+                    UNIQUE (username, date)
                 )
             ''')
 
